@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dakota AI</title>
+
+<style>
+body{
+font-family: Arial;
+max-width:600px;
+margin:auto;
+}
+
+#chat{
+border:1px solid #ccc;
+height:400px;
+overflow-y:auto;
+padding:10px;
+margin-bottom:10px;
+}
+
+input{
+width:80%;
+padding:8px;
+}
+
+button{
+padding:8px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Dakota AI</h2>
+
+<div id="chat"></div>
+
+<input id="message" placeholder="Type a message">
+<button onclick="sendMessage()">Send</button>
+
+<script>
+async function sendMessage() {
+    const input = document.getElementById("userInput");
+    const chatBox = document.getElementById("chatBox");
+
+    const message = input.value;
+    if (!message) return;
+
+    chatBox.innerHTML += `<p><b>You:</b> ${message}</p>`;
+    input.value = "";
+
+    // thinking indicator
+    const thinking = document.createElement("p");
+    thinking.innerHTML = "<b>Dakota:</b> thinking...";
+    chatBox.appendChild(thinking);
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    const response = await fetch("/chat", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: message })
+    });
+
+    const data = await response.json();
+
+    thinking.innerHTML = `<b>Dakota:</b> ${data.reply}`;
+
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Enter key to send
+document.getElementById("userInput").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        sendMessage();
+    }
+});
+</script>
+
+</body>
+</html>

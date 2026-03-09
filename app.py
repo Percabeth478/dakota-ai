@@ -1,30 +1,36 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session
 from groq import Groq
 import os
 
 app = Flask(__name__)
 
-# Create Groq client using the API key from environment variables
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+# Secret key required for sessions
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
-conversation_history = ""
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
 def ask_ai(message):
-    global conversation_history
+    # create conversation history for this user if it doesn't exist
+    if "history" not in session:
+        session["history"] = ""
 
-    conversation_history += f"User: {message}\nDakota: "
+    history = session["history"]
+
+    history += f"User: {message}\nDakota: "
 
     chat_completion = client.chat.completions.create(
         messages=[
-            {"role": "user", "content": conversation_history}
+            {"role": "user", "content": history}
         ],
         model="llama-3.1-8b-instant"
     )
 
     reply = chat_completion.choices[0].message.content
 
-    conversation_history += reply + "\n"
+    history += reply + "\n"
+
+    session["history"] = history
 
     return reply
 
