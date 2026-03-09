@@ -40,31 +40,47 @@ padding:8px;
 <button onclick="sendMessage()">Send</button>
 
 <script>
-async function sendMessage(){
 
-let input=document.getElementById("message")
-let message=input.value
+async function sendMessage() {
 
-if(message==="") return
+    const input = document.getElementById("message");
+    const chatBox = document.getElementById("chat");
 
-let chat=document.getElementById("chat")
+    const message = input.value;
 
-chat.innerHTML += "<p><b>You:</b> "+message+"</p>"
+    if (!message) return;
 
-input.value=""
+    chatBox.innerHTML += `<p><b>You:</b> ${message}</p>`;
 
-let response=await fetch("/chat",{
-method:"POST",
-headers:{"Content-Type":"application/json"},
-body:JSON.stringify({message:message})
-})
+    input.value = "";
 
-let data=await response.json()
+    const thinking = document.createElement("p");
+    thinking.innerHTML = "<b>Dakota:</b> thinking...";
+    chatBox.appendChild(thinking);
 
-chat.innerHTML += "<p><b>Dakota:</b> "+data.reply+"</p>"
+    chatBox.scrollTop = chatBox.scrollHeight;
 
-chat.scrollTop = chat.scrollHeight
+    const response = await fetch("/chat", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: message })
+    });
+
+    const data = await response.json();
+
+    thinking.innerHTML = `<b>Dakota:</b> ${data.reply}`;
+
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
+
+document.getElementById("message").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        sendMessage();
+    }
+});
+
 </script>
 
 </body>
