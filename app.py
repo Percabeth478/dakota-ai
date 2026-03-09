@@ -1,26 +1,29 @@
 from flask import Flask, request, jsonify, render_template
-import requests
+from groq import Groq
 import os
 
 app = Flask(__name__)
 
+# Create Groq client using the API key from environment variables
+client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
 conversation_history = ""
+
 
 def ask_ai(message):
     global conversation_history
 
     conversation_history += f"User: {message}\nDakota: "
 
-    response = requests.post(
-        "http://localhost:11434/api/generate",
-        json={
-            "model": "llama3",
-            "prompt": conversation_history,
-            "stream": False
-        }
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {"role": "user", "content": conversation_history}
+        ],
+        model="llama3-8b-8192"
     )
 
-    reply = response.json()["response"]
+    reply = chat_completion.choices[0].message.content
+
     conversation_history += reply + "\n"
 
     return reply
