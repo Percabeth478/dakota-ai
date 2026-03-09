@@ -11,29 +11,29 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 
 def ask_ai(message):
-    # create conversation history for this user if it doesn't exist
+
     if "history" not in session:
-        session["history"] = ""
+        session["history"] = []
 
     history = session["history"]
 
-    history += f"User: {message}\nDakota: "
+    history.append({"role": "user", "content": message})
+
+    if len(history) > 20:
+        history = history[-20:]
 
     chat_completion = client.chat.completions.create(
-        messages=[
-            {"role": "user", "content": history}
-        ],
+        messages=history,
         model="llama-3.1-8b-instant"
     )
 
     reply = chat_completion.choices[0].message.content
 
-    history += reply + "\n"
+    history.append({"role": "assistant", "content": reply})
 
     session["history"] = history
 
     return reply
-
 
 @app.route("/")
 def home():
