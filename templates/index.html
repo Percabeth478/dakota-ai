@@ -1,1 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dakota AI</title>
 
+<style>
+body{
+font-family: Arial;
+max-width:600px;
+margin:auto;
+}
+
+#chat{
+border:1px solid #ccc;
+height:400px;
+overflow-y:auto;
+padding:10px;
+margin-bottom:10px;
+}
+
+input{
+width:80%;
+padding:8px;
+}
+
+button{
+padding:8px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>Dakota AI</h2>
+
+<div id="chat"></div>
+
+<input id="message" placeholder="Type a message">
+<button onclick="sendMessage()">Send</button>
+
+<script>
+async function sendMessage(){
+
+let input=document.getElementById("message")
+let message=input.value
+
+if(message==="") return
+
+let chat=document.getElementById("chat")
+
+chat.innerHTML += "<p><b>You:</b> "+message+"</p>"
+
+input.value=""
+
+let response=await fetch("/chat",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({message:message})
+})
+
+let data=await response.json()
+
+chat.innerHTML += "<p><b>Dakota:</b> "+data.reply+"</p>"
+
+chat.scrollTop = chat.scrollHeight
+}
+</script>
+
+</body>
+</html>
