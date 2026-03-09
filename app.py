@@ -19,7 +19,7 @@ def ask_ai(message):
         messages=[
             {"role": "user", "content": conversation_history}
         ],
-        model="llama3-8b-8192"
+        model="llama-3.1-8b-instant"
     )
 
     reply = chat_completion.choices[0].message.content
