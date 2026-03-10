@@ -13,7 +13,9 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 def ask_ai(message):
 
     if "history" not in session:
-        session["history"] = []
+        session["history"] = [
+            {"role": "system", "content": "You are Dakota, a helpful AI assistant."}
+        ]
 
     history = session["history"]
 
