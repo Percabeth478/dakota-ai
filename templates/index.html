@@ -4,82 +4,191 @@
 <title>Dakota AI</title>
 
 <style>
+
 body{
-font-family: Arial;
-max-width:600px;
+font-family: Arial, sans-serif;
+max-width:700px;
 margin:auto;
+padding:20px;
+background:#f4f4f4;
+transition:0.3s;
+}
+
+body.dark{
+background:#121212;
+color:white;
+}
+
+h2{
+display:flex;
+justify-content:space-between;
+align-items:center;
 }
 
 #chat{
-border:1px solid #ccc;
-height:400px;
+border-radius:10px;
+padding:15px;
+height:420px;
 overflow-y:auto;
-padding:10px;
-margin-bottom:10px;
+background:white;
+box-shadow:0 2px 10px rgba(0,0,0,0.1);
+transition:0.3s;
+}
+
+body.dark #chat{
+background:#1e1e1e;
+}
+
+.message{
+max-width:75%;
+padding:10px 14px;
+margin:8px 0;
+border-radius:16px;
+line-height:1.4;
+animation: fadeIn 0.25s ease;
+}
+
+.user{
+background:#4f8cff;
+color:white;
+margin-left:auto;
+border-bottom-right-radius:4px;
+}
+
+.bot{
+background:#e5e5ea;
+border-bottom-left-radius:4px;
+}
+
+body.dark .bot{
+background:#333;
+}
+
+#inputArea{
+margin-top:10px;
+display:flex;
+gap:8px;
 }
 
 input{
-width:80%;
-padding:8px;
+flex:1;
+padding:10px;
+border-radius:8px;
+border:1px solid #ccc;
+font-size:14px;
+}
+
+body.dark input{
+background:#2a2a2a;
+color:white;
+border:1px solid #444;
 }
 
 button{
-padding:8px;
+padding:10px 16px;
+border:none;
+border-radius:8px;
+background:#4f8cff;
+color:white;
+cursor:pointer;
+font-weight:bold;
 }
-</style>
 
+button:hover{
+opacity:0.9;
+}
+
+#toggleDark{
+background:#888;
+}
+
+@keyframes fadeIn{
+from{
+opacity:0;
+transform:translateY(5px);
+}
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+</style>
 </head>
 
 <body>
 
-<h2>Dakota AI</h2>
+<h2>
+Dakota AI
+<button id="toggleDark">🌙</button>
+</h2>
 
 <div id="chat"></div>
 
-<input id="message" placeholder="Type a message">
+<div id="inputArea">
+<input id="message" placeholder="Type a message...">
 <button onclick="sendMessage()">Send</button>
+</div>
 
 <script>
 
-async function sendMessage() {
+const chatBox = document.getElementById("chat");
+const input = document.getElementById("message");
 
-    const input = document.getElementById("message");
-    const chatBox = document.getElementById("chat");
+function addMessage(text, sender){
 
-    const message = input.value;
+    const msg = document.createElement("div");
+    msg.classList.add("message");
 
-    if (!message) return;
+    if(sender === "user"){
+        msg.classList.add("user");
+    } else {
+        msg.classList.add("bot");
+    }
 
-    chatBox.innerHTML += `<p><b>You:</b> ${message}</p>`;
+    msg.innerText = text;
 
-    input.value = "";
-
-    const thinking = document.createElement("p");
-    thinking.innerHTML = "<b>Dakota:</b> thinking...";
-    chatBox.appendChild(thinking);
-
+    chatBox.appendChild(msg);
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    const response = await fetch("/chat", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
+    return msg;
+}
+
+async function sendMessage(){
+
+    const message = input.value.trim();
+
+    if(!message) return;
+
+    addMessage(message,"user");
+
+    input.value="";
+
+    const thinking = addMessage("Dakota is thinking...","bot");
+
+    const response = await fetch("/chat",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
         },
-        body: JSON.stringify({ message: message })
+        body:JSON.stringify({message:message})
     });
 
     const data = await response.json();
 
-    thinking.innerHTML = `<b>Dakota:</b> ${data.reply}`;
+    thinking.innerText = data.reply;
 
-    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-document.getElementById("message").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
+input.addEventListener("keypress",function(e){
+    if(e.key==="Enter"){
         sendMessage();
     }
 });
+
+document.getElementById("toggleDark").onclick = ()=>{
+    document.body.classList.toggle("dark");
+};
 
 </script>
 
