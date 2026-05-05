@@ -193,7 +193,7 @@ function addMessage(text, sender){
     return msg;
 }
 
-function sendBotMessages(messages, delay = 1200){
+function sendBotMessages(messages){
 
 let i = 0;
 
@@ -203,8 +203,7 @@ if(i >= messages.length) return;
 addMessage(messages[i], "bot");
 i++;
 
-const typingTime = Math.max(700, messages[i-1].length * 40);
-setTimeout(showNext, typingTime);
+setTimeout(showNext, 300); 
 }
 
 showNext();
