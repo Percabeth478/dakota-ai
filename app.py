@@ -86,6 +86,8 @@ def ask_ai(message):
         history.append({"role": "assistant", "content": reply})
         session["chats"][chat_id] = history
 
+        session.modified = True
+
         return reply
 
 # Backend routes
