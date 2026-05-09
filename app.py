@@ -159,6 +159,9 @@ def get_messages():
 
     return jsonify({"messages": messages})
 
+@app.route('/googlee72c3b27cedf356e.html')
+def google_verify():
+    return render_template('googlee72c3b27cedf356e.html')
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
