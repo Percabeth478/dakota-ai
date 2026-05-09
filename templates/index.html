@@ -156,16 +156,12 @@ Dakota AI
 
 <div id="inputArea">
 <input id="message" placeholder="Type a message...">
-<button onclick="sendMessage()">Send</button>
+<button onclick="sendMessage()">➤</button>
 </div>
 
 <div id="sidepanel">
-<h3>Menu</h3>
-<ul>
-<li><a href="#">Home</a></li>
-<li><a href="#">Settings</a></li>
-<li><a href="#">Help</a></li>
-</ul>
+<ul id="chatList"></ul>
+<button onclick="createNewChat()">+ New Chat</button>
 <button onclick="closeSidePanel()">Close</button>
 </div>
 
@@ -174,91 +170,152 @@ Dakota AI
 const chatBox = document.getElementById("chat");
 const input = document.getElementById("message");
 
-function addMessage(text, sender){
-
+function addMessage(text, sender) {
     const msg = document.createElement("div");
     msg.classList.add("message");
 
-    if(sender === "user"){
+    if (sender === "user") {
         msg.classList.add("user");
     } else {
         msg.classList.add("bot");
     }
 
     msg.innerText = text;
-
     chatBox.appendChild(msg);
     chatBox.scrollTop = chatBox.scrollHeight;
 
     return msg;
 }
 
-function sendBotMessages(messages){
+function sendBotMessages(messages) {
+    let i = 0;
 
-let i = 0;
+    function showNext() {
+        if (i >= messages.length) return;
 
-function showNext(){
-if(i >= messages.length) return;
+        addMessage(messages[i], "bot");
+        i++;
 
-addMessage(messages[i], "bot");
-i++;
+        const typingTime = Math.max(500, messages[i - 1].length * 30);
+        setTimeout(showNext, typingTime);
+    }
 
-setTimeout(showNext, 300); 
+    showNext();
 }
 
-showNext();
-}
-
-async function sendMessage(){
-
+async function sendMessage() {
     const message = input.value.trim();
+    if (!message) return;
 
-    if(!message) return;
+    addMessage(message, "user");
+    input.value = "";
 
-    addMessage(message,"user");
+    const thinking = addMessage("Dakota is typing...", "bot");
 
-    input.value="";
-
-    const thinking = addMessage("Dakota is typing...","bot");
-
-    const response = await fetch("/chat",{
-        method:"POST",
-        headers:{
-            "Content-Type":"application/json"
+    const response = await fetch("/chat", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
         },
-        body:JSON.stringify({message:message})
+        body: JSON.stringify({ message })
     });
 
     const data = await response.json();
-
     thinking.remove();
 
-const parts = data.reply
-.split("\n")
-.filter(part => part.trim() !== "");
+    const parts = data.reply
+        .split("\n")
+        .filter(part => part.trim() !== "");
 
-sendBotMessages(parts);
-
+    sendBotMessages(parts);
 }
 
-input.addEventListener("keypress",function(e){
-    if(e.key==="Enter"){
+async function switchChat(chatId) {
+    await fetch("/switch_chat", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ chat_id: chatId })
+    });
+
+    chatBox.innerHTML = "";
+
+    const res = await fetch("/get_messages");
+    const data = await res.json();
+
+    data.messages.forEach(msg => {
+        addMessage(msg.content, msg.role === "user" ? "user" : "bot");
+    });
+}
+
+input.addEventListener("keypress", function (e) {
+    if (e.key === "Enter") {
         sendMessage();
     }
 });
 
-document.getElementById("toggleDark").onclick = ()=>{
+document.getElementById("toggleDark").onclick = () => {
     document.body.classList.toggle("dark");
     document.getElementById("sidepanel").classList.toggle("dark");
 };
 
-function openSidePanel(){
+function openSidePanel() {
     document.getElementById("sidepanel").style.transform = "translateX(0)";
 }
 
-function closeSidePanel(){
+async function createNewChat() {
+    const res = await fetch("/new_chat", { method: "POST" });
+    const data = await res.json();
+
+    await loadChats();
+    await switchChat(data.chat_id);
+}
+
+function addChatToList(chatId, title) {
+    const li = document.createElement("li");
+    li.innerText = title;
+
+    li.onclick = () => switchChat(chatId);
+
+    li.ondblclick = async () => {
+        const newName = prompt("Rename chat:");
+        if (!newName) return;
+
+        await fetch("/rename_chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ chat_id: chatId, title: newName })
+        });
+
+        loadChats();
+    };
+
+    document.getElementById("chatList").appendChild(li);
+}
+
+async function loadChats() {
+    const res = await fetch("/get_chats");
+    const data = await res.json();
+
+    const list = document.getElementById("chatList");
+    list.innerHTML = "";
+
+    (data.chats || []).forEach(chatId => {
+        const title = data.titles[chatId] || chatId;
+        addChatToList(chatId, title);
+    });
+}
+
+function closeSidePanel() {
     document.getElementById("sidepanel").style.transform = "translateX(-100%)";
 }
+
+window.onload = async () => {
+    await loadChats();
+};
 </script>
 
 </body>
