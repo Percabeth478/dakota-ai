@@ -142,6 +142,19 @@ background:#1e1e1e;
 color:white;
 }
 
+#chatList li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+#chatList button {
+padding: 4px 6px;
+font-size: 12px;
+margin-left: 4px;
+}
+
 </style>
 </head>
 
@@ -274,11 +287,16 @@ async function createNewChat() {
 
 function addChatToList(chatId, title) {
     const li = document.createElement("li");
-    li.innerText = title;
 
-    li.onclick = () => switchChat(chatId);
+    const titleSpan = document.createElement("span");
+    titleSpan.innerText = title;
+    titleSpan.onclick = () => switchChat(chatId);
 
-    li.ondblclick = async () => {
+    const renameBtn = document.createElement("button");
+    renameBtn.innerText = "✏️";
+    renameBtn.onclick = async (e) => {
+        e.stopPropagation();
+
         const newName = prompt("Rename chat:");
         if (!newName) return;
 
@@ -292,6 +310,40 @@ function addChatToList(chatId, title) {
 
         loadChats();
     };
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.innerText = "🗑️";
+    deleteBtn.onclick = async (e) => {
+        e.stopPropagation();
+
+        if (!confirm("Delete this chat?")) return;
+
+        await fetch("/delete_chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ chat_id: chatId })
+        });
+
+        await loadChats();
+
+        const res = await fetch("/get_chats");
+        const data = await res.json();
+
+        if (data.chats.length > 0) {
+            await switchChat(data.chats[0]);
+        } else {
+            chatBox.innerHTML = "";
+        }
+    };
+
+    const btnGroup = document.createElement("span");
+    btnGroup.appendChild(renameBtn);
+    btnGroup.appendChild(deleteBtn);
+
+    li.appendChild(titleSpan);
+    li.appendChild(btnGroup);
 
     document.getElementById("chatList").appendChild(li);
 }
@@ -315,6 +367,13 @@ function closeSidePanel() {
 
 window.onload = async () => {
     await loadChats();
+
+    const res = await fetch("/get_chats");
+    const data = await res.json();
+
+    if (data.chats.length > 0) {
+        await switchChat(data.chats[0]);
+    }
 };
 </script>
 
