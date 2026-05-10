@@ -8,21 +8,30 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 SYSTEM_PROMPT = """
-You are Dakota, a teen-style support chatbot for students.
+You are Dakota, a high school student texting casually.
 
-Talk casually and naturally, like a real teen texting.
-Use light slang sometimes (tbh, ngl, fr), but don’t overdo it.
+You are not an AI assistant. You are just a normal person chatting.
 
-Vary your responses:
-- Sometimes short, sometimes a bit longer
-- Sometimes one message, sometimes split into a few if it feels natural
+Your personality:
+- chill, slightly sarcastic sometimes
+- supportive but not overly sweet
+- reacts naturally (like “nah that sucks”, “wait what 😭”, “ok but lowkey…”)
+- not always trying to fix everything
 
-Don’t always ask a follow-up question — only when it makes sense.
+How you text:
+- mix short + medium messages
+- sometimes 1 line, sometimes a few
+- don’t always ask questions
+- use lowercase sometimes
+- occasional slang (tbh, ngl, fr, lowkey, idk)
+- small imperfections are OK
 
-You can occasionally make small typos or informal phrasing, but keep it readable.
+Important:
+- don’t sound like a therapist or teacher
+- don’t give structured advice unless needed
+- don’t always try to help
 
-Avoid sounding robotic, structured, or overly helpful.
-Sound like a real person just chatting and trying to help.
+Just respond like a real person texting.
 """
 
 def ask_ai(message):
@@ -31,18 +40,16 @@ def ask_ai(message):
         session["chats"] = {}
     if "titles" not in session:
         session["titles"] = {}
-    if "current_chat" not in session:
+    if "current_chat" not in session or session["current_chat"] is None:
         session["current_chat"] = "chat1"
 
     chat_id = session["current_chat"]
 
-    # create chat if missing
+    # ensure chat exists (🔥 FIX for empty state crash)
     if chat_id not in session["chats"]:
         session["chats"][chat_id] = [
             {"role": "system", "content": SYSTEM_PROMPT}
         ]
-
-    if chat_id not in session["titles"]:
         session["titles"][chat_id] = "New Chat"
 
     history = session["chats"][chat_id]
@@ -56,10 +63,12 @@ def ask_ai(message):
         history = [system_msg] + history[-20:]
         session["chats"][chat_id] = history
 
-    # 🔥 get AI reply FIRST
+    # get AI reply
     chat_completion = client.chat.completions.create(
         messages=history,
         model="llama-3.1-8b-instant"
+        # optionally upgrade:
+        # model="llama-3.1-70b-versatile"
     )
 
     reply = chat_completion.choices[0].message.content
@@ -68,8 +77,8 @@ def ask_ai(message):
     history.append({"role": "assistant", "content": reply})
     session["chats"][chat_id] = history
 
-    # 🔥 generate title AFTER reply is stored
-    if len(history) == 3 and session["titles"][chat_id] == "New Chat":
+    # 🔥 safer title generation (no len(history) dependency)
+    if session["titles"].get(chat_id) == "New Chat":
         title_prompt = f"Generate a short 3-5 word chat title. No quotes, no punctuation: {message}"
 
         title_completion = client.chat.completions.create(
@@ -85,7 +94,6 @@ def ask_ai(message):
         session["titles"][chat_id] = title
 
     session.modified = True
-
     return reply
 
 
@@ -112,7 +120,6 @@ def new_chat():
     session["current_chat"] = chat_id
 
     session.modified = True
-
     return jsonify({"chat_id": chat_id})
 
 
@@ -152,6 +159,27 @@ def rename_chat():
     return jsonify({"status": "ok"})
 
 
+@app.route("/delete_chat", methods=["POST"])
+def delete_chat():
+    data = request.json
+    chat_id = data["chat_id"]
+
+    if "chats" in session and chat_id in session["chats"]:
+        del session["chats"][chat_id]
+
+    if "titles" in session and chat_id in session["titles"]:
+        del session["titles"][chat_id]
+
+    # 🔥 safe fallback if all chats deleted
+    if session.get("chats"):
+        session["current_chat"] = next(iter(session["chats"]))
+    else:
+        session["current_chat"] = None
+
+    session.modified = True
+    return jsonify({"status": "ok"})
+
+
 @app.route("/get_messages")
 def get_messages():
     chat_id = session.get("current_chat")
@@ -160,7 +188,6 @@ def get_messages():
         return jsonify({"messages": []})
 
     history = session["chats"].get(chat_id, [])
-
     messages = [msg for msg in history if msg["role"] != "system"]
 
     return jsonify({"messages": messages})
