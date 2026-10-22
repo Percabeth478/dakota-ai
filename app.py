@@ -1,12 +1,17 @@
+# Import necessary modules for Flask web app and Groq AI client
 from flask import Flask, request, jsonify, render_template, session
 from groq import Groq
 import os
 
+# Initialize Flask application
 app = Flask(__name__)
+# Set secret key for secure session management
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
+# Initialize Groq client for AI API interactions
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
+# Define the system prompt that sets the AI's personality and behavior
 SYSTEM_PROMPT = """
 You are Dakota, a high school student texting casually.
 
@@ -34,8 +39,9 @@ Important:
 Just respond like a real person texting.
 """
 
+# Main function to handle AI chat interactions
 def ask_ai(message):
-    # ensure session structure exists
+    # Ensure session has necessary structures for chats and titles
     if "chats" not in session:
         session["chats"] = {}
     if "titles" not in session:
@@ -45,7 +51,7 @@ def ask_ai(message):
 
     chat_id = session["current_chat"]
 
-    # ensure chat exists (🔥 FIX for empty state crash)
+    # Initialize chat if it doesn't exist
     if chat_id not in session["chats"]:
         session["chats"][chat_id] = [
             {"role": "system", "content": SYSTEM_PROMPT}
@@ -54,36 +60,37 @@ def ask_ai(message):
 
     history = session["chats"][chat_id]
 
-    # add user message
+    # Add user message to history
     history.append({"role": "user", "content": message})
 
-    # trim history
+    # Trim history to keep only recent messages
     if len(history) > 21:
         system_msg = history[0]
         history = [system_msg] + history[-20:]
         session["chats"][chat_id] = history
 
-    # get AI reply
+    # Generate AI response using Groq API
     chat_completion = client.chat.completions.create(
         messages=history,
-        model="llama-3.1-8b-instant"
+        model="GPT OSS 20B"
         # optionally upgrade:
         # model="llama-3.1-70b-versatile"
     )
 
+    # Extract reply from response
     reply = chat_completion.choices[0].message.content
 
-    # store reply
+    # Add AI reply to history
     history.append({"role": "assistant", "content": reply})
     session["chats"][chat_id] = history
 
-    # 🔥 safer title generation (no len(history) dependency)
+    # Generate title for new chats
     if session["titles"].get(chat_id) == "New Chat":
         title_prompt = f"Generate a short 3-5 word chat title. No quotes, no punctuation: {message}"
 
         title_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": title_prompt}],
-            model="llama-3.1-8b-instant"
+            model="GPT OSS 20B"
         )
 
         title = title_completion.choices[0].message.content.strip()
@@ -99,11 +106,13 @@ def ask_ai(message):
 
 # ---------------- ROUTES ----------------
 
+# Route for home page
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
+# Route to create a new chat
 @app.route("/new_chat", methods=["POST"])
 def new_chat():
     if "chats" not in session:
@@ -123,6 +132,7 @@ def new_chat():
     return jsonify({"chat_id": chat_id})
 
 
+# Route to switch to a different chat
 @app.route("/switch_chat", methods=["POST"])
 def switch_chat():
     chat_id = request.json["chat_id"]
@@ -131,6 +141,7 @@ def switch_chat():
     return jsonify({"status": "ok"})
 
 
+# Route to send a message and get AI response
 @app.route("/chat", methods=["POST"])
 def chat():
     user_message = request.json["message"]
@@ -138,6 +149,7 @@ def chat():
     return jsonify({"reply": reply})
 
 
+# Route to get list of chats and their titles
 @app.route("/get_chats")
 def get_chats():
     return jsonify({
@@ -146,6 +158,7 @@ def get_chats():
     })
 
 
+# Route to rename a chat
 @app.route("/rename_chat", methods=["POST"])
 def rename_chat():
     data = request.json
@@ -159,6 +172,7 @@ def rename_chat():
     return jsonify({"status": "ok"})
 
 
+# Route to delete a chat
 @app.route("/delete_chat", methods=["POST"])
 def delete_chat():
     data = request.json
@@ -180,6 +194,7 @@ def delete_chat():
     return jsonify({"status": "ok"})
 
 
+# Route to get messages for current chat
 @app.route("/get_messages")
 def get_messages():
     chat_id = session.get("current_chat")
@@ -193,12 +208,13 @@ def get_messages():
     return jsonify({"messages": messages})
 
 
-# Google verification
+# Google verification route
 @app.route('/googlee72c3b27cedf356e.html')
 def google_verify():
     return render_template('googlee72c3b27cedf356e.html')
 
 
+# Run the Flask app
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
